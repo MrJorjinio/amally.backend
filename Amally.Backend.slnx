@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Amally.API/Amally.API.csproj" />
+    <Project Path="src/Amally.Application/Amally.Application.csproj" />
+    <Project Path="src/Amally.Core/Amally.Core.csproj" />
+    <Project Path="src/Amally.Infrastructure/Amally.Infrastructure.csproj" />
+  </Folder>
+</Solution>
