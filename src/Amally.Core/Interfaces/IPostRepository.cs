@@ -15,6 +15,7 @@ public interface IPostRepository
     Task<(List<Post> Posts, int TotalCount)> SearchAsync(string query, int page, int pageSize);
     Task<(List<Post> Posts, int TotalCount)> GetFeedAsync(Guid userId, int page, int pageSize);
     Task<List<Post>> GetBookmarkedAsync(Guid userId, int page, int pageSize);
+    Task<List<Post>> GetTopByEngagementAsync(int limit);
     Task<Post> CreateAsync(Post post);
     Task UpdateAsync(Post post);
     Task DeleteAsync(Post post);

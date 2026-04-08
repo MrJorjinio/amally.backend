@@ -14,6 +14,16 @@ public class CommentLikeRepository : ICommentLikeRepository
     public async Task<bool> ExistsAsync(Guid userId, Guid commentId) =>
         await _db.CommentLikes.AnyAsync(cl => cl.UserId == userId && cl.CommentId == commentId);
 
+    public async Task<HashSet<Guid>> GetLikedCommentIdsAsync(Guid userId, IEnumerable<Guid> commentIds)
+    {
+        var ids = commentIds.ToList();
+        var liked = await _db.CommentLikes
+            .Where(cl => cl.UserId == userId && ids.Contains(cl.CommentId))
+            .Select(cl => cl.CommentId)
+            .ToListAsync();
+        return liked.ToHashSet();
+    }
+
     public async Task CreateAsync(CommentLike like)
     {
         _db.CommentLikes.Add(like);

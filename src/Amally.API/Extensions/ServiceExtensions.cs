@@ -60,6 +60,7 @@ public static class ServiceExtensions
         services.AddScoped<ICommentService, CommentService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<ITokenService, TokenService>();
+        services.AddSingleton<IStorageService, MinioStorageService>();
         return services;
     }
 }

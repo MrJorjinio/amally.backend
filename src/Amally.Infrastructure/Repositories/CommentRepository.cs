@@ -17,6 +17,23 @@ public class CommentRepository : ICommentRepository
             .Include(c => c.Replies).ThenInclude(r => r.User)
             .FirstOrDefaultAsync(c => c.Id == id);
 
+    public async Task<(List<Comment> Items, int TotalCount)> GetByUserIdAsync(Guid userId, int page, int pageSize)
+    {
+        var query = _db.Comments
+            .Include(c => c.User)
+            .Include(c => c.Post)
+            .Where(c => c.UserId == userId)
+            .OrderByDescending(c => c.CreatedAt);
+
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (items, totalCount);
+    }
+
     public async Task<List<Comment>> GetByPostIdAsync(Guid postId) =>
         await _db.Comments
             .Include(c => c.User)

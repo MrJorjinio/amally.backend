@@ -26,8 +26,6 @@ public class PostService : IPostService
         var post = await _postRepo.GetByIdAsync(postId)
             ?? throw new KeyNotFoundException("Post not found.");
 
-        await _postRepo.IncrementViewCountAsync(postId);
-
         return await MapToDto(post, currentUserId);
     }
 
@@ -91,6 +89,27 @@ public class PostService : IPostService
         {
             Items = items,
             TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize
+        };
+    }
+
+    public async Task<PaginatedResult<PostDto>> GetBookmarkedAsync(Guid userId, int page, int pageSize)
+    {
+        var posts = await _postRepo.GetBookmarkedAsync(userId, page, pageSize);
+        var items = new List<PostDto>();
+        foreach (var post in posts)
+            items.Add(await MapToDto(post, userId));
+
+        // Count total bookmarks for pagination
+        var totalCount = items.Count < pageSize && page == 1
+            ? items.Count
+            : (page * pageSize) + 1; // approximate, ensures hasMore works
+
+        return new PaginatedResult<PostDto>
+        {
+            Items = items,
+            TotalCount = items.Count < pageSize ? ((page - 1) * pageSize) + items.Count : (page + 1) * pageSize,
             Page = page,
             PageSize = pageSize
         };
@@ -182,6 +201,49 @@ public class PostService : IPostService
 
         await _bookmarkRepo.CreateAsync(userId, postId);
         return true;
+    }
+
+    public async Task<List<PostDto>> GetHottestAsync(int limit, Guid? currentUserId)
+    {
+        var posts = await _postRepo.GetTopByEngagementAsync(limit);
+        var items = new List<PostDto>();
+        foreach (var post in posts)
+            items.Add(await MapToDto(post, currentUserId));
+        return items;
+    }
+
+    public async Task<List<TopAuthorDto>> GetTopAuthorsAsync(int limit)
+    {
+        var posts = await _postRepo.GetTopByEngagementAsync(limit);
+        var seen = new HashSet<Guid>();
+        var authors = new List<TopAuthorDto>();
+
+        foreach (var post in posts)
+        {
+            if (seen.Add(post.UserId))
+            {
+                authors.Add(new TopAuthorDto
+                {
+                    Author = new UserSummaryDto
+                    {
+                        Id = post.User.Id,
+                        Username = post.User.Username,
+                        FullName = post.User.FullName,
+                        ProfilePictureUrl = post.User.ProfilePictureUrl
+                    },
+                    TopPost = new TopAuthorPostDto
+                    {
+                        Id = post.Id,
+                        Title = post.Title,
+                        CoverImageUrl = post.CoverImageUrl,
+                        LikesCount = post.LikesCount,
+                        CommentsCount = post.CommentsCount
+                    }
+                });
+            }
+        }
+
+        return authors;
     }
 
     private async Task<PostDto> MapToDto(Post post, Guid? currentUserId)

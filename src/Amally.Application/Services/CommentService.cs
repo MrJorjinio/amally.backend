@@ -1,3 +1,4 @@
+using Amally.Application.DTOs;
 using Amally.Application.DTOs.Comments;
 using Amally.Application.DTOs.Users;
 using Amally.Application.Interfaces;
@@ -23,7 +24,48 @@ public class CommentService : ICommentService
     {
         var comments = await _commentRepo.GetByPostIdAsync(postId);
         var rootComments = comments.Where(c => c.ParentCommentId == null).ToList();
-        return rootComments.Select(c => MapToDto(c, currentUserId)).ToList();
+
+        // Batch-check which comments the user liked (single query)
+        var likedIds = new HashSet<Guid>();
+        if (currentUserId.HasValue)
+        {
+            var allIds = CollectAllIds(comments);
+            likedIds = await _commentLikeRepo.GetLikedCommentIdsAsync(currentUserId.Value, allIds);
+        }
+
+        return rootComments.Select(c => MapToDto(c, likedIds)).ToList();
+    }
+
+    private static List<Guid> CollectAllIds(IEnumerable<Comment> comments)
+    {
+        var ids = new List<Guid>();
+        foreach (var c in comments)
+        {
+            ids.Add(c.Id);
+            if (c.Replies is { Count: > 0 })
+                ids.AddRange(CollectAllIds(c.Replies));
+        }
+        return ids;
+    }
+
+    public async Task<PaginatedResult<UserCommentDto>> GetByUserIdAsync(Guid userId, int page, int pageSize)
+    {
+        var (items, totalCount) = await _commentRepo.GetByUserIdAsync(userId, page, pageSize);
+        return new PaginatedResult<UserCommentDto>
+        {
+            Items = items.Select(c => new UserCommentDto
+            {
+                Id = c.Id,
+                Content = c.Content,
+                LikesCount = c.LikesCount,
+                PostId = c.PostId,
+                PostTitle = c.Post?.Title ?? "",
+                CreatedAt = c.CreatedAt,
+            }).ToList(),
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize,
+        };
     }
 
     public async Task<CommentDto> CreateAsync(Guid userId, Guid postId, CreateCommentRequest request)
@@ -55,7 +97,7 @@ public class CommentService : ICommentService
         await _postRepo.UpdateAsync(post);
 
         var created = await _commentRepo.GetByIdAsync(comment.Id);
-        return MapToDto(created!, null);
+        return MapToDto(created!, []);
     }
 
     public async Task<CommentDto> UpdateAsync(Guid userId, Guid commentId, string content)
@@ -70,7 +112,8 @@ public class CommentService : ICommentService
         comment.UpdatedAt = DateTime.UtcNow;
         await _commentRepo.UpdateAsync(comment);
 
-        return MapToDto(comment, userId);
+        var likedIds = await _commentLikeRepo.GetLikedCommentIdsAsync(userId, [comment.Id]);
+        return MapToDto(comment, likedIds);
     }
 
     public async Task DeleteAsync(Guid userId, Guid commentId)
@@ -110,7 +153,7 @@ public class CommentService : ICommentService
         return true;
     }
 
-    private CommentDto MapToDto(Comment comment, Guid? currentUserId)
+    private static CommentDto MapToDto(Comment comment, HashSet<Guid> likedIds)
     {
         return new CommentDto
         {
@@ -125,8 +168,8 @@ public class CommentService : ICommentService
             },
             ParentCommentId = comment.ParentCommentId,
             LikesCount = comment.LikesCount,
-            IsLiked = false,
-            Replies = comment.Replies?.Select(r => MapToDto(r, currentUserId)).ToList() ?? [],
+            IsLiked = likedIds.Contains(comment.Id),
+            Replies = comment.Replies?.Select(r => MapToDto(r, likedIds)).ToList() ?? [],
             CreatedAt = comment.CreatedAt,
             UpdatedAt = comment.UpdatedAt
         };

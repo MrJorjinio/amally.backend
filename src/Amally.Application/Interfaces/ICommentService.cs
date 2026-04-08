@@ -1,3 +1,4 @@
+using Amally.Application.DTOs;
 using Amally.Application.DTOs.Comments;
 
 namespace Amally.Application.Interfaces;
@@ -5,6 +6,7 @@ namespace Amally.Application.Interfaces;
 public interface ICommentService
 {
     Task<List<CommentDto>> GetByPostIdAsync(Guid postId, Guid? currentUserId);
+    Task<PaginatedResult<UserCommentDto>> GetByUserIdAsync(Guid userId, int page, int pageSize);
     Task<CommentDto> CreateAsync(Guid userId, Guid postId, CreateCommentRequest request);
     Task<CommentDto> UpdateAsync(Guid userId, Guid commentId, string content);
     Task DeleteAsync(Guid userId, Guid commentId);

@@ -17,4 +17,7 @@ public interface IPostService
     Task DeleteAsync(Guid userId, Guid postId);
     Task<bool> ToggleLikeAsync(Guid userId, Guid postId);
     Task<bool> ToggleBookmarkAsync(Guid userId, Guid postId);
+    Task<PaginatedResult<PostDto>> GetBookmarkedAsync(Guid userId, int page, int pageSize);
+    Task<List<PostDto>> GetHottestAsync(int limit, Guid? currentUserId);
+    Task<List<TopAuthorDto>> GetTopAuthorsAsync(int limit);
 }

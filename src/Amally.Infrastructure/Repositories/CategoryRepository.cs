@@ -16,4 +16,12 @@ public class CategoryRepository : ICategoryRepository
 
     public async Task<Category?> GetByIdAsync(int id) =>
         await _db.Categories.FindAsync(id);
+
+    public async Task<List<(Category Category, int PostCount)>> GetTrendingAsync(int limit) =>
+        await _db.Categories
+            .Select(c => new { Category = c, PostCount = c.Posts.Count })
+            .OrderByDescending(x => x.PostCount)
+            .Take(limit)
+            .Select(x => ValueTuple.Create(x.Category, x.PostCount))
+            .ToListAsync();
 }

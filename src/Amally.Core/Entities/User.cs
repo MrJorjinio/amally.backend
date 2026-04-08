@@ -1,3 +1,5 @@
+using Amally.Core.Enums;
+
 namespace Amally.Core.Entities;
 
 public class User
@@ -7,6 +9,7 @@ public class User
     public string FullName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
+    public UserRole Role { get; set; } = UserRole.User;
     public string? ProfilePictureUrl { get; set; }
     public string? Bio { get; set; }
     public int FollowersCount { get; set; }

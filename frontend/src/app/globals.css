@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #141414;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.highlight-comment {
+  background-color: rgba(105, 130, 79, 0.08);
+  border-radius: 8px;
+  transition: background-color 1.5s ease-out;
+}
+
+/* Thread connector hover — highlight the connector lines when hovering the invisible click target */
+.hover-thread-line:hover ~ .connector,
+.hover-thread-line:hover + .connector {
+  --thread-color: rgba(0, 0, 0, 0.4) !important;
+}
+/* Use :has to target sibling connector */
+div:has(> .hover-thread-line:hover) > .connector {
+  --thread-color: rgba(0, 0, 0, 0.4) !important;
+}
+div:has(> .hover-thread-line:hover) > div:not(.hover-thread-line) {
+  /* don't highlight the horizontal branch separately — it uses the same var */
+}

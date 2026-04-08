@@ -13,6 +13,7 @@ public class Post
     public int CategoryId { get; set; }
     public int RegionId { get; set; }
     public EducationLevel EducationLevel { get; set; }
+    public PostStatus Status { get; set; } = PostStatus.Pending;
     public int LikesCount { get; set; }
     public int CommentsCount { get; set; }
     public int ViewsCount { get; set; }

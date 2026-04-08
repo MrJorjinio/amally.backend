@@ -2,9 +2,13 @@ using Amally.API.Extensions;
 using Amally.Application.DTOs;
 using Amally.Application.DTOs.Posts;
 using Amally.Application.Interfaces;
+using Amally.Core.Entities;
 using Amally.Core.Enums;
+using Amally.Core.Interfaces;
+using Amally.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Amally.API.Controllers;
 
@@ -13,8 +17,15 @@ namespace Amally.API.Controllers;
 public class PostsController : ControllerBase
 {
     private readonly IPostService _postService;
+    private readonly IPostRepository _postRepo;
+    private readonly AmallyDbContext _db;
 
-    public PostsController(IPostService postService) => _postService = postService;
+    public PostsController(IPostService postService, IPostRepository postRepo, AmallyDbContext db)
+    {
+        _postService = postService;
+        _postRepo = postRepo;
+        _db = db;
+    }
 
     [HttpGet]
     public async Task<ActionResult<PaginatedResult<PostDto>>> GetPosts(
@@ -34,6 +45,48 @@ public class PostsController : ControllerBase
     {
         var currentUserId = User.GetUserIdOrNull();
         var result = await _postService.GetByIdAsync(id, currentUserId);
+        return Ok(result);
+    }
+
+    [HttpPost("{id:guid}/view")]
+    public async Task<IActionResult> RecordView(Guid id)
+    {
+        var userId = User.GetUserIdOrNull();
+
+        if (userId.HasValue)
+        {
+            // Authenticated user — deduplicate by (userId, postId)
+            var alreadyViewed = await _db.PostViews
+                .AnyAsync(v => v.UserId == userId.Value && v.PostId == id);
+
+            if (alreadyViewed) return NoContent();
+
+            _db.PostViews.Add(new PostView
+            {
+                UserId = userId.Value,
+                PostId = id,
+                CreatedAt = DateTime.UtcNow,
+            });
+            await _db.SaveChangesAsync();
+        }
+
+        // Increment the counter (for anonymous users, always increment; for auth users, only on first view)
+        await _postRepo.IncrementViewCountAsync(id);
+        return NoContent();
+    }
+
+    [HttpGet("hottest")]
+    public async Task<ActionResult<List<PostDto>>> GetHottest([FromQuery] int limit = 6)
+    {
+        var currentUserId = User.GetUserIdOrNull();
+        var result = await _postService.GetHottestAsync(limit, currentUserId);
+        return Ok(result);
+    }
+
+    [HttpGet("top-authors")]
+    public async Task<ActionResult<List<TopAuthorDto>>> GetTopAuthors([FromQuery] int limit = 50)
+    {
+        var result = await _postService.GetTopAuthorsAsync(limit);
         return Ok(result);
     }
 

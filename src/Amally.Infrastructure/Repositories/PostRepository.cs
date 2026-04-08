@@ -29,6 +29,7 @@ public class PostRepository : IPostRepository
             .Include(p => p.User)
             .Include(p => p.Category)
             .Include(p => p.Region)
+            .Where(p => p.Status == PostStatus.Approved)
             .AsQueryable();
 
         if (categoryId.HasValue)
@@ -68,15 +69,37 @@ public class PostRepository : IPostRepository
 
     public async Task<(List<Post> Posts, int TotalCount)> SearchAsync(string searchQuery, int page, int pageSize)
     {
-        var query = _db.Posts
+        var baseQuery = _db.Posts
             .Include(p => p.User)
             .Include(p => p.Category)
-            .Include(p => p.Region)
-            .Where(p => p.SearchVector.Matches(EF.Functions.WebSearchToTsQuery("english", searchQuery)))
+            .Include(p => p.Region);
+
+        // Try full-text search first
+        var tsQuery = baseQuery
+            .Where(p => p.Status == PostStatus.Approved && p.SearchVector.Matches(EF.Functions.WebSearchToTsQuery("english", searchQuery)))
             .OrderByDescending(p => p.SearchVector.Rank(EF.Functions.WebSearchToTsQuery("english", searchQuery)));
 
-        var totalCount = await query.CountAsync();
-        var posts = await query
+        var totalCount = await tsQuery.CountAsync();
+
+        // Fall back to ILIKE partial matching if no full-text results
+        if (totalCount == 0)
+        {
+            var pattern = $"%{searchQuery}%";
+            var likeQuery = baseQuery
+                .Where(p => p.Status == PostStatus.Approved && (EF.Functions.ILike(p.Title, pattern) ||
+                            EF.Functions.ILike(p.Content, pattern) ||
+                            EF.Functions.ILike(p.Category.Name, pattern)))
+                .OrderByDescending(p => p.CreatedAt);
+
+            totalCount = await likeQuery.CountAsync();
+            var likePosts = await likeQuery
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+            return (likePosts, totalCount);
+        }
+
+        var posts = await tsQuery
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
@@ -95,7 +118,7 @@ public class PostRepository : IPostRepository
             .Include(p => p.User)
             .Include(p => p.Category)
             .Include(p => p.Region)
-            .Where(p => followingIds.Contains(p.UserId));
+            .Where(p => followingIds.Contains(p.UserId) && p.Status == PostStatus.Approved);
 
         var totalCount = await query.CountAsync();
         var posts = await query
@@ -109,15 +132,37 @@ public class PostRepository : IPostRepository
 
     public async Task<List<Post>> GetBookmarkedAsync(Guid userId, int page, int pageSize)
     {
-        return await _db.Bookmarks
+        var postIds = await _db.Bookmarks
             .Where(b => b.UserId == userId)
             .OrderByDescending(b => b.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(b => b.Post)
+            .Select(b => b.PostId)
+            .ToListAsync();
+
+        if (postIds.Count == 0) return [];
+
+        var posts = await _db.Posts
             .Include(p => p.User)
             .Include(p => p.Category)
             .Include(p => p.Region)
+            .Where(p => postIds.Contains(p.Id))
+            .ToListAsync();
+
+        // Preserve bookmark ordering
+        return postIds.Select(id => posts.First(p => p.Id == id)).ToList();
+    }
+
+    public async Task<List<Post>> GetTopByEngagementAsync(int limit)
+    {
+        return await _db.Posts
+            .Include(p => p.User)
+            .Include(p => p.Category)
+            .Include(p => p.Region)
+            .Where(p => p.Status == PostStatus.Approved)
+            .OrderByDescending(p => p.LikesCount + p.CommentsCount)
+            .ThenByDescending(p => p.CreatedAt)
+            .Take(limit)
             .ToListAsync();
     }
 

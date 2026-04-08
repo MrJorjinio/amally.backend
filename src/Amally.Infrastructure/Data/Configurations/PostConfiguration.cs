@@ -12,6 +12,8 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
         builder.Property(p => p.Title).HasMaxLength(200).IsRequired();
         builder.Property(p => p.Content).IsRequired();
         builder.Property(p => p.CoverImageUrl).HasMaxLength(500);
+        builder.Property(p => p.Status).HasDefaultValue(Core.Enums.PostStatus.Pending);
+        builder.HasIndex(p => p.Status);
 
         builder.HasOne(p => p.User).WithMany(u => u.Posts).HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne(p => p.Category).WithMany(c => c.Posts).HasForeignKey(p => p.CategoryId);

@@ -18,4 +18,18 @@ public class CategoriesController : ControllerBase
         var categories = await _categoryRepo.GetAllAsync();
         return Ok(categories);
     }
+
+    [HttpGet("trending")]
+    public async Task<IActionResult> GetTrending([FromQuery] int limit = 8)
+    {
+        var trending = await _categoryRepo.GetTrendingAsync(limit);
+        var result = trending.Select(t => new
+        {
+            id = t.Category.Id,
+            name = t.Category.Name,
+            slug = t.Category.Slug,
+            postCount = t.PostCount
+        });
+        return Ok(result);
+    }
 }

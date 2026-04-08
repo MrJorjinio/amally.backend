@@ -17,6 +17,7 @@ public class AmallyDbContext : DbContext
     public DbSet<CommentLike> CommentLikes => Set<CommentLike>();
     public DbSet<UserFollow> UserFollows => Set<UserFollow>();
     public DbSet<Bookmark> Bookmarks => Set<Bookmark>();
+    public DbSet<PostView> PostViews => Set<PostView>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

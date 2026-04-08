@@ -14,6 +14,15 @@ public class FollowRepository : IFollowRepository
     public async Task<bool> ExistsAsync(Guid followerId, Guid followingId) =>
         await _db.UserFollows.AnyAsync(f => f.FollowerId == followerId && f.FollowingId == followingId);
 
+    public async Task<HashSet<Guid>> GetFollowingIdsAsync(Guid userId)
+    {
+        var ids = await _db.UserFollows
+            .Where(f => f.FollowerId == userId)
+            .Select(f => f.FollowingId)
+            .ToListAsync();
+        return ids.ToHashSet();
+    }
+
     public async Task CreateAsync(UserFollow follow)
     {
         _db.UserFollows.Add(follow);
