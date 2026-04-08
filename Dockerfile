@@ -15,5 +15,4 @@ RUN dotnet publish "src/Amally.API/Amally.API.csproj" -c Release -o /app/publish
 FROM base AS final
 WORKDIR /app
 COPY --from=build /app/publish .
-ENV ASPNETCORE_URLS=http://+:8080
-ENTRYPOINT ["dotnet", "Amally.API.dll"]
+ENTRYPOINT ["sh", "-c", "dotnet Amally.API.dll --urls http://+:${PORT:-8080}"]
