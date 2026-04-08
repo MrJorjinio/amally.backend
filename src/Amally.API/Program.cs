@@ -38,10 +38,13 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+try
 {
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AmallyDbContext>();
+    Log.Information("Applying database migrations...");
     await db.Database.MigrateAsync();
+    Log.Information("Database migrations applied successfully");
 
     // Mark existing posts as Approved (one-time migration)
     var pendingOldPosts = await db.Posts.Where(p => p.Status == PostStatus.Pending && p.CreatedAt < DateTime.UtcNow.AddMinutes(-1)).CountAsync();
@@ -69,6 +72,10 @@ using (var scope = app.Services.CreateScope())
         await db.SaveChangesAsync();
         Log.Information("Admin account seeded: admin@amally.uz / Admin123!");
     }
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Failed during startup (migration/seeding)");
 }
 
 app.UseMiddleware<ExceptionMiddleware>();
