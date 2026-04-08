@@ -90,7 +90,6 @@ app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
 
 Log.Information("Amally API started on {Urls}", string.Join(", ", app.Urls));
 app.Run();
