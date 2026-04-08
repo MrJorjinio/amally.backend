@@ -41,6 +41,7 @@ public static class ServiceExtensions
 
     public static IServiceCollection AddRepositories(this IServiceCollection services)
     {
+        services.AddScoped<IOtpRepository, OtpRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IPostRepository, PostRepository>();
         services.AddScoped<ICommentRepository, CommentRepository>();
@@ -61,6 +62,7 @@ public static class ServiceExtensions
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddSingleton<IStorageService, MinioStorageService>();
+        services.AddHttpClient<IEmailService, EmailService>();
         return services;
     }
 }

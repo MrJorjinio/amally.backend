@@ -73,48 +73,47 @@ public class AdminController : ControllerBase
 
         if (period == "monthly")
         {
-            var start = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-11);
+            // Daily breakdown of current month
+            var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            var daysInMonth = DateTime.DaysInMonth(now.Year, now.Month);
             var raw = await _db.Users
-                .Where(u => u.CreatedAt >= start && u.Role == UserRole.User)
+                .Where(u => u.CreatedAt >= monthStart && u.Role == UserRole.User)
                 .Select(u => u.CreatedAt)
                 .ToListAsync();
-            var grouped = raw.GroupBy(d => new { d.Year, d.Month }).ToDictionary(g => g.Key, g => g.Count());
+            var grouped = raw.GroupBy(d => d.Day).ToDictionary(g => g.Key, g => g.Count());
 
-            data = Enumerable.Range(0, 12).Select(i =>
-            {
-                var d = now.AddMonths(-11 + i);
-                var key = new { d.Year, d.Month };
-                return (object)new { label = d.ToString("MMM yy"), count = grouped.GetValueOrDefault(key, 0) };
-            }).ToList();
+            data = Enumerable.Range(1, daysInMonth).Select(day =>
+                (object)new { label = day.ToString(), count = grouped.GetValueOrDefault(day, 0) }
+            ).ToList();
         }
         else if (period == "yearly")
         {
-            var start = new DateTime(now.Year - 4, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            // Monthly breakdown of current year
+            var yearStart = new DateTime(now.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             var raw = await _db.Users
-                .Where(u => u.CreatedAt >= start && u.Role == UserRole.User)
-                .Select(u => u.CreatedAt.Year)
-                .ToListAsync();
-            var grouped = raw.GroupBy(y => y).ToDictionary(g => g.Key, g => g.Count());
-
-            data = Enumerable.Range(0, 5).Select(i =>
-            {
-                var year = now.Year - 4 + i;
-                return (object)new { label = year.ToString(), count = grouped.GetValueOrDefault(year, 0) };
-            }).ToList();
-        }
-        else // daily
-        {
-            var start = now.Date.ToUniversalTime().AddDays(-29);
-            var raw = await _db.Users
-                .Where(u => u.CreatedAt >= start && u.Role == UserRole.User)
+                .Where(u => u.CreatedAt >= yearStart && u.Role == UserRole.User)
                 .Select(u => u.CreatedAt)
                 .ToListAsync();
-            var grouped = raw.GroupBy(d => d.Date).ToDictionary(g => g.Key, g => g.Count());
+            var grouped = raw.GroupBy(d => d.Month).ToDictionary(g => g.Key, g => g.Count());
 
-            data = Enumerable.Range(0, 30).Select(i =>
+            var months = new[] { "Yan", "Fev", "Mar", "Apr", "May", "Iyn", "Iyl", "Avg", "Sen", "Okt", "Noy", "Dek" };
+            data = Enumerable.Range(1, 12).Select(m =>
+                (object)new { label = months[m - 1], count = grouped.GetValueOrDefault(m, 0) }
+            ).ToList();
+        }
+        else // daily — hourly breakdown of today
+        {
+            var todayStart = now.Date.ToUniversalTime();
+            var raw = await _db.Users
+                .Where(u => u.CreatedAt >= todayStart && u.Role == UserRole.User)
+                .Select(u => u.CreatedAt)
+                .ToListAsync();
+            var grouped = raw.GroupBy(d => d.Hour).ToDictionary(g => g.Key, g => g.Count());
+
+            data = Enumerable.Range(0, 24).Select(h =>
             {
-                var d = now.Date.AddDays(-29 + i);
-                return (object)new { label = d.ToString("dd/MM"), count = grouped.GetValueOrDefault(d, 0) };
+                var label = h == 0 ? "12AM" : h < 12 ? $"{h}AM" : h == 12 ? "12PM" : $"{h - 12}PM";
+                return (object)new { label, count = grouped.GetValueOrDefault(h, 0) };
             }).ToList();
         }
 

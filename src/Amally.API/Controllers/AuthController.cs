@@ -13,9 +13,23 @@ public class AuthController : ControllerBase
     public AuthController(IAuthService authService) => _authService = authService;
 
     [HttpPost("register")]
-    public async Task<ActionResult<AuthResponse>> Register([FromBody] RegisterRequest request)
+    public async Task<ActionResult<MessageResponse>> Register([FromBody] RegisterRequest request)
     {
         var result = await _authService.RegisterAsync(request);
+        return Ok(result);
+    }
+
+    [HttpPost("verify-email")]
+    public async Task<ActionResult<AuthResponse>> VerifyEmail([FromBody] VerifyEmailRequest request)
+    {
+        var result = await _authService.VerifyEmailAsync(request);
+        return Ok(result);
+    }
+
+    [HttpPost("resend-otp")]
+    public async Task<ActionResult<MessageResponse>> ResendOtp([FromBody] ResendOtpRequest request)
+    {
+        var result = await _authService.ResendOtpAsync(request);
         return Ok(result);
     }
 
@@ -30,6 +44,13 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponse>> Refresh([FromBody] RefreshTokenRequest request)
     {
         var result = await _authService.RefreshTokenAsync(request.RefreshToken);
+        return Ok(result);
+    }
+
+    [HttpPost("google")]
+    public async Task<ActionResult<GoogleAuthResponse>> GoogleAuth([FromBody] GoogleAuthRequest request)
+    {
+        var result = await _authService.GoogleAuthAsync(request);
         return Ok(result);
     }
 }

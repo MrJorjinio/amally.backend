@@ -63,6 +63,7 @@ using (var scope = app.Services.CreateScope())
             Email = "admin@amally.uz",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
             Role = UserRole.Admin,
+            IsEmailVerified = true,
             CreatedAt = DateTime.UtcNow,
         });
         await db.SaveChangesAsync();
@@ -82,6 +83,7 @@ app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
 
 Log.Information("Amally API started on {Urls}", string.Join(", ", app.Urls));
 app.Run();

@@ -18,6 +18,7 @@ public class AmallyDbContext : DbContext
     public DbSet<UserFollow> UserFollows => Set<UserFollow>();
     public DbSet<Bookmark> Bookmarks => Set<Bookmark>();
     public DbSet<PostView> PostViews => Set<PostView>();
+    public DbSet<EmailVerificationOtp> EmailVerificationOtps => Set<EmailVerificationOtp>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

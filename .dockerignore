@@ -1,0 +1,7 @@
+frontend
+admin
+.git
+*.md
+**/node_modules
+**/bin
+**/obj
