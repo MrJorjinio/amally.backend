@@ -16,36 +16,35 @@ public class MinioStorageService : IStorageService
         var endpoint = config["Minio:Endpoint"] ?? "localhost:9000";
         var accessKey = config["Minio:AccessKey"] ?? "minioadmin";
         var secretKey = config["Minio:SecretKey"] ?? "minioadmin";
-        var useSsl = config.GetValue<bool>("Minio:UseSsl");
+        var useSsl = config.GetValue<bool>("Minio:UseSsl", true);
+        var region = config["Minio:Region"] ?? "auto";
         _bucket = config["Minio:Bucket"] ?? "amally";
-        _publicUrl = config["Minio:PublicUrl"] ?? $"http://{endpoint}/{_bucket}";
+        _publicUrl = config["Minio:PublicUrl"] ?? $"https://{endpoint}/{_bucket}";
 
-        _minio = new MinioClient()
+        var client = new MinioClient()
             .WithEndpoint(endpoint)
             .WithCredentials(accessKey, secretKey)
-            .WithSSL(useSsl)
-            .Build();
+            .WithRegion(region);
+
+        if (useSsl) client = client.WithSSL();
+
+        _minio = client.Build();
     }
 
     public async Task<string> UploadAsync(Stream stream, string fileName, string contentType)
     {
-        var exists = await _minio.BucketExistsAsync(new BucketExistsArgs().WithBucket(_bucket));
-        if (!exists)
+        // Check if bucket exists, create if not (works for MinIO, may fail on R2 — create bucket manually there)
+        try
         {
-            await _minio.MakeBucketAsync(new MakeBucketArgs().WithBucket(_bucket));
-            // Set bucket policy to public read
-            var policy = $$"""
+            var exists = await _minio.BucketExistsAsync(new BucketExistsArgs().WithBucket(_bucket));
+            if (!exists)
             {
-                "Version": "2012-10-17",
-                "Statement": [{
-                    "Effect": "Allow",
-                    "Principal": {"AWS": ["*"]},
-                    "Action": ["s3:GetObject"],
-                    "Resource": ["arn:aws:s3:::{{_bucket}}/*"]
-                }]
+                await _minio.MakeBucketAsync(new MakeBucketArgs().WithBucket(_bucket));
             }
-            """;
-            await _minio.SetPolicyAsync(new SetPolicyArgs().WithBucket(_bucket).WithPolicy(policy));
+        }
+        catch
+        {
+            // R2 or other providers may not support bucket operations — ignore
         }
 
         var objectName = $"images/{fileName}";
