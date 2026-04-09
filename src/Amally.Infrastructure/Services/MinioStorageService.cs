@@ -2,6 +2,7 @@ using Amally.Application.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Minio;
 using Minio.DataModel.Args;
+using Serilog;
 
 namespace Amally.Infrastructure.Services;
 
@@ -33,28 +34,22 @@ public class MinioStorageService : IStorageService
 
     public async Task<string> UploadAsync(Stream stream, string fileName, string contentType)
     {
-        // Check if bucket exists, create if not (works for MinIO, may fail on R2 — create bucket manually there)
-        try
-        {
-            var exists = await _minio.BucketExistsAsync(new BucketExistsArgs().WithBucket(_bucket));
-            if (!exists)
-            {
-                await _minio.MakeBucketAsync(new MakeBucketArgs().WithBucket(_bucket));
-            }
-        }
-        catch
-        {
-            // R2 or other providers may not support bucket operations — ignore
-        }
-
         var objectName = $"images/{fileName}";
 
-        await _minio.PutObjectAsync(new PutObjectArgs()
-            .WithBucket(_bucket)
-            .WithObject(objectName)
-            .WithStreamData(stream)
-            .WithObjectSize(stream.Length)
-            .WithContentType(contentType));
+        try
+        {
+            await _minio.PutObjectAsync(new PutObjectArgs()
+                .WithBucket(_bucket)
+                .WithObject(objectName)
+                .WithStreamData(stream)
+                .WithObjectSize(stream.Length)
+                .WithContentType(contentType));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to upload {FileName} to {Bucket}", fileName, _bucket);
+            throw;
+        }
 
         return $"{_publicUrl}/{objectName}";
     }
