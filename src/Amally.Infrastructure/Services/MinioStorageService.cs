@@ -2,8 +2,6 @@ using Amally.Application.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Minio;
 using Minio.DataModel.Args;
-using Serilog;
-
 namespace Amally.Infrastructure.Services;
 
 public class MinioStorageService : IStorageService
@@ -47,7 +45,7 @@ public class MinioStorageService : IStorageService
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed to upload {FileName} to {Bucket}", fileName, _bucket);
+            Console.Error.WriteLine($"Failed to upload {fileName} to {_bucket}: {ex.Message}");
             throw;
         }
 
