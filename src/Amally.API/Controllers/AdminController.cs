@@ -151,6 +151,27 @@ public class AdminController : ControllerBase
         return Ok(posts);
     }
 
+    // GET /api/admin/users/{id}
+    [Authorize(Roles = "Admin")]
+    [HttpGet("users/{id:guid}")]
+    public async Task<IActionResult> GetUser(Guid id)
+    {
+        var user = await _db.Users
+            .Where(u => u.Id == id && u.Role == UserRole.User)
+            .Select(u => new
+            {
+                u.Id, u.FullName, u.Username, u.Email,
+                u.ProfilePictureUrl, u.Bio,
+                u.FollowersCount, u.FollowingCount,
+                u.CreatedAt,
+                postsCount = u.Posts.Count(p => p.Status == PostStatus.Approved),
+                totalPostsCount = u.Posts.Count,
+            })
+            .FirstOrDefaultAsync();
+        if (user == null) return NotFound();
+        return Ok(user);
+    }
+
     // GET /api/admin/users?page=1&pageSize=20
     [Authorize(Roles = "Admin")]
     [HttpGet("users")]
@@ -170,6 +191,29 @@ public class AdminController : ControllerBase
             .ToListAsync();
 
         return Ok(new { items = users, totalCount = total, page, pageSize });
+    }
+
+    // GET /api/admin/posts/{id}
+    [Authorize(Roles = "Admin")]
+    [HttpGet("posts/{id:guid}")]
+    public async Task<IActionResult> GetPost(Guid id)
+    {
+        var post = await _db.Posts
+            .Include(p => p.User)
+            .Include(p => p.Category)
+            .Include(p => p.Region)
+            .FirstOrDefaultAsync(p => p.Id == id);
+        if (post == null) return NotFound();
+        return Ok(new
+        {
+            post.Id, post.Title, post.Content, post.CoverImageUrl,
+            author = post.User.FullName, authorUsername = post.User.Username,
+            category = post.Category.Name, region = post.Region.Name,
+            educationLevel = post.EducationLevel.ToString(),
+            status = post.Status.ToString(),
+            post.LikesCount, post.CommentsCount, post.ViewsCount,
+            post.CreatedAt,
+        });
     }
 
     // GET /api/admin/posts?page=1&pageSize=20&status=all|pending|approved|rejected
